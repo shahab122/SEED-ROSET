@@ -31,7 +31,7 @@ We also developed a Python-based tool for model evaluation and we call it the Re
 
 [https://github.com/whitelightning450/Streamflow_Evaluator](https://github.com/whitelightning450/Research-Oriented-Streamflow-Evaluation-Tool)
 
-A more advanced version of ROSET, which will be called Community Streamflow Evaluation System (CSES), is available github as well:
+A more advanced version of ROSET, which will be called Community Streamflow Evaluation System (CSES), is available on github as well:
 
 https://github.com/whitelightning450/Community-Streamflow-Evaluation-System
 
