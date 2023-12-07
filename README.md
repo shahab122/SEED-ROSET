@@ -45,7 +45,7 @@ The same data access process will be followed here as it is mentioned in the ROS
 
 "Community-Streamflow-Evaluation-System leverages USGS/NWIS observations from 1980-2020 and colocated and while all data is publically available through the respective agencies, we found the download time to be preventative for a timely model evaluation. The Alabama Water Institute at the University of Alabama hosts NWM v2.1 retrospective for all colocated USGS monitoring stations at a daily temporal resolution and provides the data free of charge via access to Amazon AWS S3 cloud storage. Community-Streamflow-Evaluation-System can quickly access observed and predicted data supporting a fast and repeatable tool for evaluating modeled streamflow performance."
 
-#### How to use SEED Coupled with SET? 
+#### How to use SEED Coupled with ROSET? 
 
 **First**, we will be asked to select the type of extreme events between 'flood' and 'drought':
 
