@@ -1,7 +1,7 @@
 # SEED-ROSET
 This repository hosts all Python scripts and data access information for the coupling of SEED and ROSET.
 
-![GitHub Front Page](https://github.com/shahab122/SEED-ROSET/assets/28275758/e4d312b3-312f-4e75-b302-9bec9cc5e837)
+![GitHub Front Page2](https://github.com/shahab122/SEED-ROSET/assets/28275758/ef112be7-7995-4a35-a796-de06815c39d4)
 
 # Streamflow Extreme Event Dataset (SEED)
 
