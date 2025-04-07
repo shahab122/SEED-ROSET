@@ -39,6 +39,10 @@ The ROSET can be used to show the relationship between LULC and the model perfor
 
 SEED supports repeatable and quantifiable hydrologic model evaluation, especially when coupled with the esearch-Oriented RStreamflow Evaluator Tool (ROSET). This workflow helps to better understand dominant hydrological processes as well as when, where, and why they occur and paves a way toward selecting the appropriate model mosaic. Coupled SEED and ROSET is a framework to develop understanding of performance of different models and configurations that lead towards selecting appropriate models for use in the NextGen framework. SEED can be applied in the event-based evaluation of hydrologic models and can tell us where model performance needs improvement.   
 
+Once we get the start and end dates of a hydrological event, we can use the Tethys-CSES App to evaluate the performance of a hydrological model (e.g., NWM) in predicting this particular hydrological event. The GitHUb page for the app is avialble here which also inlcudes the link to the Tethys-CSES App:
+
+https://github.com/AlabamaWaterInstitute/Tethys-CSES
+
 ### Data Access
 
 The same data access process will be followed here as it is mentioned in the ROSET GitHub page. This is what mentioned there which is worth repeaating here: 
