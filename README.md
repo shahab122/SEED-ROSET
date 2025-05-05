@@ -91,3 +91,5 @@ Fianlly, the model performance metrics (e.g., KGE) can be displayed in a table a
 
 ##### NOTE: THIS TOOL IS UNDER DEVELOPMENT
 
+###### Funding Acknowledgement 
+This research was supported by the Cooperative Institute for Research to Operations in Hydrology (CIROH) with funding under award NA22NWS4320003 from the NOAA Cooperative Institute Program. The statements, findings, conclusions, and recommendations are those of the author(s) and do not necessarily reflect the opinions of NOAA.
