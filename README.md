@@ -23,7 +23,7 @@ Now, the following steps were used to develop SEED for the extreme hydrological 
 
 Good news is that the above steps were implemented in the Python based SEED-ROSET Tool. The SEED-ROSET coupling tool can be used to evaluate any hydrological model (e.g., NWM v2.1) and present the evaluation results in maps and hydrograph plots including many other options. 
 
-**Assumptions**
+**Assumptions:**
 The SEED framework follows the assumptions recommended in USGS Bulletin 17C, namely: (1) the annual maximum and minimum series are assumed stationary within the analysis period; (2) flow data are log-transformed prior to fitting; and (3) the LP3 parameters—mean, standard deviation, and skew—are estimated using the method-of-moments approach with the skew bounded between –3 and +3 to avoid instability.
 
 
