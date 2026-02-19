@@ -97,9 +97,12 @@ class SEED:
         K = 2/skewness_coefficient * (((z_value - skewness_coefficient/6) * (skewness_coefficient/6) + 1)**3 - 1)
         print(K)
         fitted_data = mean_data + K * sd_data
+        print(fitted_data)
         data_lp = 10**fitted_data
-        fitted_data_values.append(data_lp)
+        print(data_lp)
+        # fitted_data_values.append(data_lp)
 
-        return fitted_data_values
+        # return fitted_data_values
+        return float(data_lp)
 
 

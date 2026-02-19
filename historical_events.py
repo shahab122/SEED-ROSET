@@ -48,7 +48,7 @@ def flood_events(state_codes, tqdm, datapath):
     merged_site_code.extend(data for data_list in site_code for data in data_list)
 
     # Save the merged DataFrame as a CSV file
-    merged_df.to_csv(f"{datapath}/LULC_Streamflow_SA/ROSET-AWS/SEED-ROSET/SEED_data/merged_flood_events.csv", index=False)
+    merged_df.to_csv(f"{datapath}/LULC_Streamflow_SA/Community-Streamflow-Evaluation-System/SEED-ROSET/SEED_data/merged_flood_events.csv", index=False)
 
     # Optionally, you can print a message to confirm that the data has been saved
     print("Merged data saved as merged_flood_events.csv")

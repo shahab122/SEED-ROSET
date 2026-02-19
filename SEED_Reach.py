@@ -38,7 +38,7 @@ from progressbar import ProgressBar
 from datetime import timedelta
 import folium
 import matplotlib
-import mapclassify
+# import mapclassify
 import time
 import jenkspy
 import hvplot.pandas
@@ -350,7 +350,7 @@ class Reach_Eval():
         m = folium.Map(location=[centeroid.y[0], centeroid.x[0]], zoom_start=8, control_scale=True) #Shahab changed zoom_start to 3 from 8
         #add legend to map
 #         colormap = cm.StepColormap(colors = ['r', 'orange',  'y', 'g'], vmin = -1, vmax = 1, index = [-1,-0.4,0,0.3,1])
-        colormap = cm.StepColormap(colors = ['r', 'orange',  'purple', 'b', 'g'], vmin = -1, vmax = 1, index = [-1,-0.41, 0.0, 0.50,0.75,1]) #Shahab added
+        colormap = cm.StepColormap(colors = ['darkred', 'red',  'orange', 'lightgreen', 'g'], vmin = -1, vmax = 1, index = [-1,-0.41, 0.0, 0.50,0.75,1]) #Shahab added
         colormap.caption = 'Model Performance (KGE)'
         m.add_child(colormap)
 
@@ -434,16 +434,16 @@ class Reach_Eval():
                 color = 'green'
 
             elif kge[0] > 0.50:
-                color = 'blue'
+                color = 'lightgreen'
 
             elif kge[0] > 0.0:
-                color = 'purple' #Shahab changed from 'yellow' to 'cyan'
+                color = 'orange' #Shahab changed the colors
             
             elif kge[0] > -0.41:
-                color = 'orange'
+                color = 'red'
 
             else:
-                color = 'red'
+                color = 'darkred'
 
             #print(site,kge[0], color)
 
@@ -457,7 +457,7 @@ class Reach_Eval():
 
 
         display(m)
-        m.save(f"{self.cwd}/LULC_Streamflow_SA/ROSET-AWS/SEED-ROSET/SEED_data/Eval_map.html") #Shahab added this
+        m.save(f"{self.cwd}/LULC_Streamflow_SA/Community-Streamflow-Evaluation-System/SEED-ROSET/SEED_data/Eval_map.html") #Shahab added this
 #         m.save("AL_0314.html")
         
         
@@ -785,7 +785,7 @@ class Reach_Eval():
 
             result_reach =self.Eval #Shahab added this on 09.22.2023
             #return result_reach     #Shahab added this on 09.22.2023
-            result_reach.to_csv(f"{self.cwd}/LULC_Streamflow_SA/ROSET-AWS/SEED-ROSET/SEED_data/result_reach.csv", index=False) #Shahab added this
+            result_reach.to_csv(f"{self.cwd}/LULC_Streamflow_SA/Community-Streamflow-Evaluation-System/SEED-ROSET/SEED_data/result_reach.csv", index=False) #Shahab added this
             
             
             

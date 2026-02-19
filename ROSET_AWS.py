@@ -1,46 +1,30 @@
 #!/usr/bin/env python
 # coding: utf-8
 #author: Ryan Johnson, PHD, Alabama Water Institute
-#Date: 6-6-2022
+#Date: 2-1-2024
 
-
-'''
-Run using the OWP_env: 
-https://www.geeksforgeeks.org/using-jupyter-notebook-in-virtual-environment/
-https://github.com/NOAA-OWP/hydrotools/tree/main/python/nwis_client
-
-https://noaa-owp.github.io/hydrotools/hydrotools.nwm_client.utils.html#national-water-model-file-utilities
-will be benefitical for finding NWM reachs between USGS sites
-'''
-
-# Import the NWIS IV Client to load USGS site data
-from hydrotools.nwis_client.iv import IVDataService
-from hydrotools.nwm_client import utils
+#Data Processing Modules
 import pandas as pd
 import numpy as np
 import data
+import geopandas as gpd
+from datetime import timedelta
+import time
+import jenkspy
+import json
+from geopy.geocoders import Nominatim
+
+# Hydrological modeling utils
+#from hydrotools.nwis_client.iv import IVDataService
+from hydrotools.nwm_client import utils
+import streamstats
+
+#Plotting modules
+import folium
+import matplotlib
 import matplotlib.pyplot as plt
 import mpl_toolkits
 from mpl_toolkits.mplot3d import Axes3D
-import sklearn
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import max_error
-from sklearn.metrics import mean_absolute_percentage_error
-import hydroeval as he
-import dataretrieval.nwis as nwis
-##https://streamstats-python.readthedocs.io/en/latest/gallery_vignettes/plot_get_characteristics.html
-import streamstats
-import geopandas as gpd
-from IPython.display import display
-import warnings
-from progressbar import ProgressBar
-from datetime import timedelta
-import folium
-import matplotlib
-import mapclassify
-import time
-import jenkspy
 import hvplot.pandas
 import holoviews as hv
 from holoviews import dim, opts, streams
@@ -48,30 +32,38 @@ from bokeh.models import HoverTool
 import branca.colormap as cm
 import vincent
 from vincent import AxisProperties, PropertySet, ValueRef, Axis
-import json
+import matplotlib.cm
 from folium import features
 import proplot as pplt
-pplt.rc["figure.facecolor"] = "w"
-import pygeohydro as gh
-import pygeoutils as geoutils
-from pygeohydro import NID, NWIS
-import pandas as pd
 from folium.plugins import StripePattern
-import io
-import swifter
-from geopy.geocoders import Nominatim
-from multiprocessing import Process
+
+#Evaluation modules
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import max_error
+from sklearn.metrics import mean_absolute_percentage_error
+import hydroeval as he
+
+#AWS Data Access Modules
 import boto3
 from botocore import UNSIGNED
 from botocore.client import Config
 
+#General Environment modules
+from IPython.display import display
+import warnings
+from progressbar import ProgressBar
+import io
+import os
+
+#Environment settings/configs
+pplt.rc["figure.facecolor"] = "w"
+os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
 geolocator = Nominatim(user_agent="geoapiExercises")
-
-
-
 pd.options.plotting.backend = 'holoviews'
-
 warnings.filterwarnings("ignore")
+
+
 
 
 
@@ -369,7 +361,7 @@ class LULC_Eval():
         #self.NWIS_data = pd.DataFrame(columns = self.NWIS_sites)
         pbar = ProgressBar()
         for site in pbar(self.NWIS_sites):
-            print('Getting data for: ', site)
+            #print('Getting data for: ', site)
             
             try:
                 service = IVDataService()
@@ -540,15 +532,20 @@ class LULC_Eval():
         
         self.NWIS_data = pd.DataFrame(columns = self.NWIS_sites)
         self.Mod_data = pd.DataFrame(columns = self.comparison_reaches)
+
+        Mod_state_key =  dict(zip(df.NHD_reachid, 
+                              df.state_id))
         
         print('Getting ', self.model, ' data')
         pbar = ProgressBar()
         for site in pbar(self.comparison_reaches):
 
             try:
-
+                #print(f"Getting data for {self.model[:3]}: ", site)
+                state = Mod_state_key[site].lower()
                 format = '%Y-%m-%d %H:%M:%S'
-                csv_key = f"{self.model}/NHD_segments_{self.state}.h5/NWM_{site}.csv"
+                csv_key = f"{self.model}/NHD_segments_{state}.h5/{self.model[:3]}_{site}.csv"
+                #print(csv_key)
                 obj = self.bucket.Object(csv_key)
                 body = obj.get()['Body']
                 Mod_flow = pd.read_csv(body)
@@ -603,19 +600,18 @@ class LULC_Eval():
         self.NWIS_data.fillna(-100, inplace = True)
         self.NWIS_column = self.NWIS_data.copy()
         self.NWIS_column = pd.DataFrame(self.NWIS_column.stack(), columns = ['NWIS_flow_cfs'])
-        self.NWIS_column = self.NWIS_column.reset_index().drop('level_1',1)
+        self.NWIS_column = self.NWIS_column.reset_index().drop('level_1', axis = 1)
 
         self.Mod_column = self.Mod_data.copy()
         col = self.model+'_flow_cfs'
         self.Mod_column = pd.DataFrame(self.Mod_column.stack(), columns = [col])
-        self.Mod_column = self.Mod_column.reset_index().drop('level_1',1)
+        self.Mod_column = self.Mod_column.reset_index().drop('level_1', axis =  1)
 
         
             
             
     def Model_Eval(self, df, size):
 
-       # self.prepare_comparison(df)
         #Creates a total categorical evaluation comparing model performacne
         print('Creating dataframe of all flow predictions to evaluate')
         self.Evaluation = pd.concat([self.Mod_column,self.NWIS_column], axis = 1)
@@ -997,9 +993,10 @@ class LULC_Eval():
                     Mod_NWIS_Scatter = hv.Scatter((Eval_df[NWIS_site_lab], Eval_df[Mod_reach_lab]), Obs_Discharge_lab, Mod_Discharge_lab).opts(tools = ['hover'], color = 'blue', xrotation=45)
                     Mod_NWIS_one2one = hv.Curve((flow_range, flow_range)).opts(color = 'red', line_dash='dashed')
                     display((NWIS_hydrograph * Mod_hydrograph*textbox_hv*RMSE_hv*Error_hv*MAPE_hv*KGE_hv).opts(width=600, legend_position='top_left', tools=['hover']) + (Mod_NWIS_Scatter*Mod_NWIS_one2one).opts(shared_axes = False))
-                
+
                 else:
                     print('No data for NWIS site: ', str(NWIS_site_lab), ' skipping.')
+
             
     #streamstats does not get lat long, we need this to do any NWIS geospatial work
     #https://github.com/hyriver/HyRiver-examples/blob/main/notebooks/dam_impact.ipynb
@@ -1107,10 +1104,15 @@ class LULC_Eval():
         centeroid = self.df_map.dissolve().centroid
 
         # Create a Map instance
-        m = folium.Map(location=[centeroid.y[0], centeroid.x[0]], tiles = 'Stamen Terrain', zoom_start=8, 
+        m = folium.Map(location=[centeroid.y[0], 
+                                 centeroid.x[0]], 
+                                 #tiles = 'Open street map ', 
+                                tiles='http://services.arcgisonline.com/arcgis/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}',
+                                 attr="Sources: National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, INCREMENT P",
+                                 zoom_start=8, 
                        control_scale=True)
         #add legend to map
-        colormap = cm.StepColormap(colors = ['darkred', 'r', 'orange', 'g'], vmin = -1, vmax = 1, index = [-1,-0.4,0,0.3,1])
+        colormap = cm.StepColormap(colors = ['red', 'orange', 'lightgreen', 'g'], vmin = -1, vmax = 1, index = [-1,-0.4,0,0.3,1])
         colormap.caption = 'Model Performance (KGE)'
         m.add_child(colormap)
 
@@ -1146,8 +1148,8 @@ class LULC_Eval():
             
             if len(df_narem)>=1:
             
-                df_narem['error'] = df_narem['obs'] - df_narem['mod']
-                df_narem['P_error'] = abs(df_narem['error']/df_narem['obs'])*100
+               # df_narem['error'] = df_narem['obs'] - df_narem['mod']
+               # df_narem['P_error'] = abs(df_narem['error']/df_narem['obs'])*100
                 #drop inf values
                 df_narem.replace([np.inf, -np.inf], np.nan, inplace = True)
                 df_narem.dropna(inplace = True)
@@ -1158,22 +1160,25 @@ class LULC_Eval():
                 #calculate scoring
                 kge, r, alpha, beta = he.evaluator(he.kge, mod.astype('float32'), obs.astype('float32'))
 
-                #set the color of marker by model performance
+                 #set the color of marker by model performance
+                #Marker color options ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen', 'cadetblue', 'darkpurple', 'white', 'pink', 'lightblue', 'lightgreen', 'gray', 'black', 'lightgray']
+
                 if kge[0] > 0.30:
                     color = 'green'
 
                 elif kge[0] > 0.0:
-                    color = 'orange'
+                    color = 'lightgreen'
 
                 elif kge[0] > -0.40:
-                    color = 'red'
+                    color = 'orange'
 
                 else:
-                    color = 'darkredred'
+                    color = 'red'
 
 
                 title_size = 14
-
+                
+                self.dff = df
                 #create graph and convert to json
                 graph = vincent.Line(df, height=300, width=500)
                 graph.axis_titles(x='Datetime', y=yaxis)
@@ -1267,15 +1272,15 @@ class HUC_Eval():
                 bucket_name = 'streamflow-app-data'
                 # Get HUC unit from the .gdb file 
                 #load the HUC geopandas df
-                
-                try:         
-                    filepath = f"s3://{bucket_name}/WBD/WBD_{HU}_HU2_GDB/WBD_{HU}_HU2_GDB.gdb/"
-                    HUC_G = gpd.read_file(filepath, layer=HUCunit)
-                except:
-                    print('No AWS access, trying local directory')
-                    filepath = f"WBD/WBD_{HU}_HU2_GDB.gdb/"
-                    HUC_G = gpd.read_file(filepath, layer=HUCunit)
-                    print('Found data in local directory')
+
+                #try:         
+                filepath = f"s3://{bucket_name}/WBD/WBD_{HU}_HU2_GDB/WBD_{HU}_HU2_GDB.gdb/"
+                HUC_G = gpd.read_file(filepath, layer=HUCunit)
+                # except:
+                #     print('No AWS access, trying local directory')
+                #     filepath = f"WBD/WBD_{HU}_HU2_GDB.gdb/"
+                #     HUC_G = gpd.read_file(filepath, layer=HUCunit)
+                #     print('Found data in local directory')
 
                 #select HUC
                 HUC_G = HUC_G[HUC_G[self.HUC_length] == h] 
@@ -1367,11 +1372,11 @@ class HUC_Eval():
         print('Getting ', self.model, ' data')
         pbar = ProgressBar()
         for site in pbar(self.comparison_reaches):
-            state = Mod_state_key[site]
+            state = Mod_state_key[site].lower()
             try:
 
                 format = '%Y-%m-%d %H:%M:%S'
-                csv_key = f"{self.model}/NHD_segments_{state}.h5/NWM_{site}.csv"
+                csv_key = f"{self.model}/NHD_segments_{state}.h5/{self.model[:3]}_{site}.csv"
                 obj = self.bucket.Object(csv_key)
                 body = obj.get()['Body']
                 Mod_flow = pd.read_csv(body)
@@ -1749,12 +1754,12 @@ class HUC_Eval():
                     Mod_NWIS_Scatter = hv.Scatter((Eval_df[NWIS_site_lab], Eval_df[Mod_reach_lab]), Obs_Discharge_lab, Mod_Discharge_lab).opts(tools = ['hover'], color = 'blue', xrotation=45)
                     Mod_NWIS_one2one = hv.Curve((flow_range, flow_range)).opts(color = 'red', line_dash='dashed')
                     
-                    display((NWIS_hydrograph * Mod_hydrograph*textbox_hv*RMSE_hv*Error_hv*MAPE_hv*KGE_hv).opts(width=600, legend_position='top_left', tools=['hover']) + (Mod_NWIS_Scatter*Mod_NWIS_one2one).opts(shared_axes = False))                 
+                    display((NWIS_hydrograph * Mod_hydrograph*textbox_hv*RMSE_hv*Error_hv*MAPE_hv*KGE_hv).opts(width=600, legend_position='top_left', tools=['hover']) + (Mod_NWIS_Scatter*Mod_NWIS_one2one).opts(shared_axes = False))
+
                 else:
                     print('No data for NWIS site: ', str(NWIS_site_lab), ' skipping.')
 
-            result_huc =Eval_df #Shahab added this on 09.22.2023
-            return result_huc     #Shahab added this on 09.22.2023
+
 
 
     def Map_Plot_Eval(self, freq, supply):
@@ -1821,10 +1826,15 @@ class HUC_Eval():
         centeroid = self.df_map.dissolve().centroid
 
         # Create a Map instance
-        m = folium.Map(location=[centeroid.y[0], centeroid.x[0]], tiles = 'Stamen Terrain', zoom_start=8, 
+        m = folium.Map(location=[centeroid.y[0], 
+                                 centeroid.x[0]], 
+                                 #tiles = 'Open street map ', 
+                                tiles='http://services.arcgisonline.com/arcgis/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}',
+                                 attr="Sources: National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, INCREMENT P",
+                                 zoom_start=8, 
                        control_scale=True)
         #add legend to map
-        colormap = cm.StepColormap(colors = ['r', 'orange',  'y', 'g'], vmin = -1, vmax = 1, index = [-1,-0.4,0,0.3,1])
+        colormap = cm.StepColormap(colors = ['r', 'orange',  'lightgreen', 'g'], vmin = -1, vmax = 1, index = [-1,-0.4,0,0.3,1])
         colormap.caption = 'Model Performance (KGE)'
         m.add_child(colormap)
 
@@ -1859,8 +1869,8 @@ class HUC_Eval():
             
             if len(df_narem) >=1:
             
-                df_narem['error'] = df_narem['obs'] - df_narem['mod']
-                df_narem['P_error'] = abs(df_narem['error']/df_narem['obs'])*100
+                #df_narem['error'] = df_narem['obs'] - df_narem['mod']
+                #df_narem['P_error'] = abs(df_narem['error']/df_narem['obs'])*100
                 #drop inf values
                 df_narem.replace([np.inf, -np.inf], np.nan, inplace = True)
                 df_narem.dropna(inplace = True)
@@ -1871,13 +1881,14 @@ class HUC_Eval():
                 #calculate scoring
                 kge, r, alpha, beta = he.evaluator(he.kge, mod.astype('float32'), obs.astype('float32'))
 
-                #set the color of marker by model performance
+                 #set the color of marker by model performance
+                #Marker color options ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen', 'cadetblue', 'darkpurple', 'white', 'pink', 'lightblue', 'lightgreen', 'gray', 'black', 'lightgray']
 
                 if kge[0] > 0.30:
                     color = 'green'
 
                 elif kge[0] > 0.0:
-                    color = 'yellow'
+                    color = 'lightgreen'
 
                 elif kge[0] > -0.40:
                     color = 'orange'
@@ -1916,6 +1927,8 @@ class HUC_Eval():
         display(m)
           
         
+        
+        
 class Reach_Eval():
     def __init__(self, model , NWIS_list, startDT, endDT, cwd):
         self = self
@@ -1947,6 +1960,7 @@ class Reach_Eval():
             date_list.append(curr_date)
             curr_date += timedelta(days=1)
         self.dates = date_list
+
    
     '''
     Get WBD HUC data
@@ -2023,12 +2037,12 @@ class Reach_Eval():
         pbar = ProgressBar()
        
         for site in pbar(self.comparison_reaches):
+            state = Mod_state_key[site].lower()
 
             try:
-                print('Getting data for NWM: ', site)
-                state = Mod_state_key[site]
+                #print(f"Getting data for {self.model}: ", site)
                 format = '%Y-%m-%d %H:%M:%S'
-                csv_key = f"{self.model}/NHD_segments_{state}.h5/NWM_{site}.csv"
+                csv_key = f"{self.model}/NHD_segments_{state}.h5/{self.model[:3]}_{site}.csv"
                 obj = self.bucket.Object(csv_key)
                 body = obj.get()['Body']
                 Mod_flow = pd.read_csv(body)
@@ -2424,8 +2438,7 @@ class Reach_Eval():
             else:
                 print('No data for NWIS site: ', str(NWIS_site_lab), ' skipping.')
 
-            result_reach =self.Eval #Shahab added this on 09.22.2023
-            return result_reach     #Shahab added this on 09.22.2023
+
 
 
 
@@ -2497,10 +2510,15 @@ class Reach_Eval():
         centeroid = self.df_map.dissolve().centroid
 
         # Create a Map instance
-        m = folium.Map(location=[centeroid.y[0], centeroid.x[0]], tiles = 'Stamen Terrain', zoom_start=8, 
+        m = folium.Map(location=[centeroid.y[0], 
+                                 centeroid.x[0]], 
+                                 #tiles = 'Open street map ', 
+                                tiles='http://services.arcgisonline.com/arcgis/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}',
+                                 attr="Sources: National Geographic, Esri, Garmin, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, INCREMENT P",
+                                 zoom_start=8, 
                        control_scale=True)
         #add legend to map
-        colormap = cm.StepColormap(colors = ['r', 'orange',  'y', 'g'], vmin = -1, vmax = 1, index = [-1,-0.4,0,0.3,1])
+        colormap = cm.StepColormap(colors = ['r', 'orange',  'lightgreen', 'g'], vmin = -1, vmax = 1, index = [-1,-0.4,0,0.3,1])
         colormap.caption = 'Model Performance (KGE)'
         m.add_child(colormap)
 
@@ -2531,12 +2549,13 @@ class Reach_Eval():
             df_narem = pd.DataFrame()
             df_narem['obs'] = self.NWIS_data_resampled[site].astype('float64')
             df_narem['mod'] = self.Mod_data_resampled[reach].astype('float64')
-            df_narem['error'] = df_narem['obs'] - df_narem['mod']
-            df_narem['P_error'] = abs(df_narem['error']/df_narem['obs'])*100
+            #df_narem['error'] = abs(df_narem['obs'] - df_narem['mod'])
+            #df_narem['P_error'] = abs(df_narem['error']/df_narem['obs'])*100
             #drop inf values
             df_narem.replace([np.inf, -np.inf], -100, inplace = True)
             df_narem = df_narem[df_narem >=0]
             df_narem.dropna(inplace = True)
+        
             
             if len(df_narem)>=1:
 
@@ -2547,12 +2566,13 @@ class Reach_Eval():
                 kge, r, alpha, beta = he.evaluator(he.kge, mod.astype('float32'), obs.astype('float32'))
 
                 #set the color of marker by model performance
+                #Marker color options ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen', 'cadetblue', 'darkpurple', 'white', 'pink', 'lightblue', 'lightgreen', 'gray', 'black', 'lightgray']
 
                 if kge[0] > 0.30:
                     color = 'green'
 
                 elif kge[0] > 0.0:
-                    color = 'yellow'
+                    color = 'lightgreen'
 
                 elif kge[0] > -0.40:
                     color = 'orange'
